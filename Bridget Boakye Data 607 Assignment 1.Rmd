@@ -1,0 +1,30 @@
+---
+title: "Bridget Boakye Data 607 Assignment 1"
+author: "Bridget Boakye"
+date: "2022-09-04"
+output:
+  html_document:
+    df_print: paged
+---
+
+**Overview: I selected the article "Why Millions Of Americans Don’t Vote" from FiveThirtyEight for this assignment. This article from October 2020 is about the voting behaviors and perceptions of a demographically representative group of the U.S. population ahead of November 2020 elections. Some of the specific issues discussed includes the demographic information of survey respondents and their voting history, barriers to voting, trust in the system and beliefs about politics. Link: https://projects.fivethirtyeight.com/non-voters-poll-2020-election/**
+
+#Load & inspect data
+
+```{r}
+theURL <- "https://raw.githubusercontent.com/breboa/MSDS-Data-606/main/nonvoters_data.csv"
+non_voters <-read.table(file = theURL, header = TRUE, sep = ",")
+
+head(non_voters)
+```
+
+#Generate data frame with subset of columns (just voter demographics, not survey responses) and target (voter category). Given that column abbreviations are clear, renaming them is not necessary. 
+
+```{r}
+#Create new data frame with subset 
+non_voters_demo <- non_voters[, c('RespId', 'ppage', 'educ', 'gender', 'race', 'income_cat', 'weight', 'voter_category')]
+head(non_voters_demo)
+```
+
+**Conclusion: The objective of this lab was to find data, load it into R markdown as a dataframe such that it would be reproducible, and create a subset of the data for future analysis.**
+
