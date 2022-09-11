@@ -1,0 +1,87 @@
+SQL Script 
+
+CREATE TABLE `top_movies_2022` (
+  `movie_name` varchar(70) NOT NULL,
+  `rater_1` int DEFAULT NULL,
+  `rater_2` int DEFAULT NULL,
+  `rater_3` int DEFAULT NULL,
+  `rater_4` int DEFAULT NULL,
+  `rater_5` int DEFAULT NULL,
+  PRIMARY KEY (`movie_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Insert data for table `top_movies_2022`
+
+LOCK TABLES `top_movies_2022` WRITE;
+/*!40000 ALTER TABLE `top_movies_2022` DISABLE KEYS */;
+INSERT INTO `top_movies_2022` VALUES ('Blood Sisters ',NULL,3,4,3,4),('Civil: Ben Crump',4,NULL,5,4,NULL),('Halftime ',4,4,4,5,4),('Nope ',5,5,NULL,5,4),('The Man from Toronto',3,4,3,NULL,NULL),('Top Gun: Maverick ',NULL,5,4,4,NULL);
+/*!40000 ALTER TABLE `top_movies_2022` ENABLE KEYS */;
+
+
+R Markdown 
+
+#Executive Summary: This assignment explores a movie dataset of the ratings of 6 of the top movies in 2022 by friends. The data is imported from MySQL into R for analysis. There is preliminary analysis done, specifically on missing values, and how to address them in this context. The approach chosen here is imputation of the median rating of each column given the size of the data and the skewness of the ratings. 
+Note: password blanked out 
+
+1. Packages installed: RMySQL, DBI, Tidyverse, Hmisc
+2. Connect to MySQL using RMySQL and retrieve movie rating dataset stored in database table
+
+```{r}
+
+mysqlconnection = dbConnect(RMySQL::MySQL(),
+                            dbname='movie_ratings',
+                            host='localhost',
+                            port=3306,
+                            user='root',
+                            password='password')
+
+#return the connection query and store the results as dataframe called movie_ratings
+
+movie_ratings <- dbGetQuery(mysqlconnection, "SELECT * FROM movie_ratings.top_movies_2022")
+```
+
+3. Exammine the movie_ratings dataframe
+
+```{r}
+summary(movie_ratings)
+```
+
+4. Examine missing values: detect the sum of NA values in the dataframe 
+
+```{r}
+sum(is.na(movie_ratings))
+```
+
+For the size of the data, 36 observations, there are quite a large number of NA values: 8. This means missing values are 1/4 or 25% of the data and as such, should not be simply dropped. 
+
+5. Identify the columns with missing values 
+
+```{r}
+colSums(is.na(movie_ratings))
+```
+This shows that all columns with the exception of movie_name have missing data points. Dropping the missing values of such a small dataset will impact the total number of observations as well as skew the number of ratings across the columns. The appropriate remedy then is imputation of either the mean or median.
+
+6. Handling missing values: check distribution to determine whether to use mean or median for imputation.
+
+Since the data in all of the columns is skewed towards the higher end of ratings, it is best to use the median. 
+
+```{r}
+hist.data.frame(movie_ratings)
+```
+
+7. Handling missing data: replace missing value in all numeric columns with median of that specific column and put into dataframe. Print dataframe 
+
+```{r}
+
+movie_ratings <- movie_ratings %>% 
+  mutate_if(is.numeric, function(x) ifelse(is.na(x), median(x, na.rm = T), x))
+
+movie_ratings
+```     
+
+8. Check whether there are still any missing values 
+After imputation, there are no missing values and we can proceed with further analysis. 
+
+```{r}
+colSums(is.na(movie_ratings))
+```     
