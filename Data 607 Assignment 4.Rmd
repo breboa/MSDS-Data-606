@@ -1,0 +1,85 @@
+---
+title: "Data 607 Assignment 4"
+author: "Bridget Boakye"
+date: "2022-09-18"
+output: html_document
+---
+
+#Overview: This lab explores identifying patterns and regular expressions through various methods. 
+
+1. Using the 173 majors listed in fivethirtyeight.com’s College Majors dataset [https://fivethirtyeight.com/features/the-economic-guide-to-picking-a-college-major/], provide code that identifies the majors that contain either "DATA" or "STATISTICS"
+
+```{r}
+
+#Load and check list of majors data from Github
+
+theURL <- "https://raw.githubusercontent.com/fivethirtyeight/data/master/college-majors/majors-list.csv"
+majors_list <-read.csv(file = theURL, header = TRUE, sep = ",")
+
+head(majors_list)
+```
+
+```{r}
+
+#use grep function to find Data or Statistics in majors column of data frame 
+
+grep('DATA|STATISTICS', majors_list$Major, value = TRUE)
+
+```
+
+
+2. Write code that transforms the data below:
+[1] "bell pepper"  "bilberry"     "blackberry"   "blood orange"
+[5] "blueberry"    "cantaloupe"   "chili pepper" "cloudberry"  
+[9] "elderberry"   "lime"         "lychee"       "mulberry"    
+[13] "olive"        "salal berry"
+
+Into a format like this:
+c("bell pepper", "bilberry", "blackberry", "blood orange", "blueberry", "cantaloupe", "chili pepper", "cloudberry", "elderberry", "lime", "lychee", "mulberry", "olive", "salal berry")
+
+```{r}
+
+#Create list of vector of the data, ie. fruits 
+
+fruits <- c("bell pepper", "bilberry", "blackberry","blood orange", "blueberry", "cantaloupe", "chili pepper", "cloudberry", "elderberry", "lime", "lychee", "mulberry", "olive", "salal berry")
+
+fruits
+```
+
+```{r}
+
+#Use paste and shQuote functions to construct strings with double quotes and produce output using concatenate 
+
+cat(paste(shQuote(fruits, type="cmd"), collapse=", "))
+
+```
+
+3. Describe, in words, what these expressions will match:
+
+a. (.)\1\1
+b. “(.)(.)\\2\\1”
+c. (..)\1
+d. “(.).\\1.\\1”
+e. “(.)(.)(.).*\\3\\2\\1”
+
+*Answer*:
+
+a. (.)\1\1: matches character appearing 3 times in a row (ex. "yyy")
+b. "(.)(.)\\2\\1": matches a pair of characters followed by another pair of characters in reversed order (ex. "cssc")
+c. (..)\1: matches two repeated characters (ex. "jaja")
+d. "(.).\\1.\\1": matches a character followed by any character, then the original character, any other character, then the original character (ex. "a2aua")
+e. "(.)(.)(.).*\\3\\2\\1": matches three characters followed by 0 or more characters then the same three characters but in reverse order. (ex. "bcddcb") 
+
+4. Construct regular expressions to match words that:
+
+a. Start and end with the same character
+b. Contain a repeated pair of letters (e.g. "church" contains "ch" repeated twice.)
+c. Contain one letter repeated in at least three places (e.g. "eleven" contains three "e"s.)
+
+*Answer*:
+
+a. str_subset(words, "^(.)((.*\\1$)|\\1?$)")
+b. str_subset("church", "([A-Za-z][A-Za-z]).*\\1")
+c. str_subset(words, "([A-Za-z][A-Za-z]).*\\1")
+
+
