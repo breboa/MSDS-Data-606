@@ -1,0 +1,115 @@
+---
+title: "Bridget Boakye Data 607 - Project 1"
+author: "Bridget Boakye"
+date: "2022-09-25"
+output: html_document
+---
+
+*Introduction:In this data analysis project, we take a text file with chess tournament results where the information has some structure and an R Markdown file that generates a .CSV file (that could for example be imported into a SQL database). The .CSV file is to have the following information for all the players: Player’s Name, Player’s State, Total Number of Points, Player’s Pre-Rating, and Average Pre Chess Rating of Opponents.* 
+
+1. Load libraries 
+```{r upload-tidyverse}
+
+library(tidyverse)
+
+```
+
+2. Import data from Github by opening a connection to read the file and inspect data by checking the head
+
+```{r import-data}
+# open a connection to your file
+con <- file('https://raw.githubusercontent.com/breboa/MSDS-Data-607/main/Project%201-text%20file',open="r")
+# read file contents
+text_file <- readLines(con)
+# close the connection
+close(con)
+
+head(text_file)
+```
+
+*Data Cleaning*
+
+3. Remove header rows 
+
+```{r remove-header}
+
+text_file2  <- text_file[-c(1, 2, 3, 4)]
+text_file2 %>% head()
+```
+
+4. Create two vectors called players and ratings to extract the necessary information, leaving out the underscores  
+
+```{r remove-underscores}
+
+players <- text_file2[seq(from=1, to = length(text_file2), by=3)]
+ratings <- text_file2[seq(from=2, to = length(text_file2), by=3)]
+
+#players
+#ratings
+```
+
+
+5. Extract relevant information requested from vectors using regex and check the new lists. Since numeric data is stored as factors, convert to numeric (eg. total points)
+
+```{r extract-details}
+
+Player_id <- as.integer(str_extract(players, "\\d+"))
+Player_Name <- str_trim(str_extract(players, "(\\w+\\s){2,3}"))
+Player_State <- str_extract(ratings, "\\w\\w")
+Total_Points <- as.numeric(str_extract(players, "\\d.\\d"))
+PreRating <- as.integer(str_extract(str_extract(ratings, "\\D\\d{3,4}\\D"), "\\d+"))
+
+#Player_Name
+#Player_State
+#Total_Points
+#PreRating
+
+```
+
+
+6. Calculate the average pre-chess rating of opponents by creating new dataframe with preratings of every players opponent 
+
+```{r average-pre-rating}
+
+opp_id <- str_extract_all(str_extract_all(players, "\\d+\\|"), "\\d+")
+
+#Convert opponent's info into list 
+
+op1 <- sapply(opp_id, length)
+max <- seq_len(max(op1))
+op2 <- t(sapply(opp_id, "[", i=max))
+opp_rating <- as.data.frame(op2)
+
+#opp_rating
+
+#Match list to ratings 
+
+v <- data.frame(Player_id, PreRating)
+final_opp_rating <- opp_rating
+final_opp_rating [] <- v$PreRating[match(unlist(final_opp_rating), v$Player_id)]
+
+#head(final_opp_rating)
+
+#Calculate opp prerating average
+
+final_opp_rating$Avg_Opp_Rating <- round(apply(final_opp_rating, 1, mean, na.rm=TRUE))
+
+head(final_opp_rating)
+
+```
+7. Merge the lists into a final_table and check head
+
+```{r new-table}
+
+final_table <- data.frame(Player_Name, Player_State, Total_Points, PreRating, final_opp_rating$Avg_Opp_Rating)
+colnames(final_table)[5] <- "Avg_Opp_Rating"
+
+head(final_table)
+```
+
+8. Write and save final result into csv
+
+```{r table-to-csv}
+
+write.table(final_table, file="Chess Rating.csv", sep=",")
+```
