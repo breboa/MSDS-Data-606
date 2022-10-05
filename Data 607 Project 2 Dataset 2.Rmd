@@ -1,0 +1,60 @@
+---
+title: "Data 607 Project 2"
+author: "Bridget Boakye"
+date: "2022-10-05"
+output: html_document
+---
+
+
+*Introduction: The goal of this assignment is to give you practice in preparing different datasets for downstream analysis work. In this assignment, I chose the movies data created and posted by Ivan Tikhonov on 9.21.22.*
+
+1. Download packages for assignment 
+
+```{r upload-packages}
+
+library(tidyr)
+library(dplyr)
+
+```
+
+2. Ivan created the movies dataset so I copied and posted the data into excel, saved the file as CSV, uploaded to my GitHub to then read into in R Studio. 
+
+```{r upload-data}
+
+url <- 'https://raw.githubusercontent.com/breboa/MSDS-Data-607/main/Movie%20Ratings%20Data%20.csv'
+movies <- read.csv(file = url)
+
+movies
+
+```
+
+3. Convert wide data format to long format by creating new columns called movie_name(new key column) and rating (new value column) using the gather method in the tidyr package 
+
+```{r wide-to-long}
+
+movies_long <- gather(movies, movie_name, rating, Prey:A.love.song, factor_key=TRUE)
+
+movies_long
+```
+
+4. Analysis: Ivan asks to compare the rating of films by female and male viewers.
+
+```{r movies-by-male-female-rating-mean}
+
+movies_gpb_gender = movies_long %>% group_by(Viewers)  %>%
+                   summarise(avg_rating = mean(rating))
+
+movies_gpb_gender
+
+```
+
+```{r movies-by-male-female-rating-median}
+
+movies_gpb_gender = movies_long %>% group_by(Viewers)  %>%
+                   summarise(avg_rating = median(rating))
+
+movies_gpb_gender
+
+```
+
+*Conclusion: After changing to the long format, the data here is pretty clean. In the analysis, female viewers provide higher ratings by 0.6 point than male viewers if we compare the two groups' ratings using the mean. However, the median, which excludes the male viewers rating for the film A long Song, shows the two groups have the same average rating and score films pretty highly with a score of 5. This data proves how different average metrics can lead to different conclusions. It'd also be interesting if this data had a movie category dimension, ie. romance, comedy, etc, by which to do the viewer analysis to see if average ratings change by the type of movie.*
