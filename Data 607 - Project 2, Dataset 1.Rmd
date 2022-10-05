@@ -1,0 +1,80 @@
+---
+title: "Data 607 Project 2"
+author: "Bridget Boakye"
+date: "2022-10-05"
+output: html_document
+---
+
+*Introduction: The goal of this assignment is to give you practice in preparing different datasets for downstream analysis work. In this assignment, I chose the Cyber Threats data posted by Tyler Brown on 9.18.22.*
+
+1. Download packages for assignment 
+
+```{r upload-packages}
+
+library(tidyr)
+library(dplyr)
+
+```
+
+2. Tyler created a cyber threat data. I copied the data Tyler into excel, saved the file as CSV, uploaded to my GitHub to then read into in R Studio. 
+
+```{r upload-data}
+
+url <- 'https://raw.githubusercontent.com/breboa/MSDS-Data-607/main/Cyber%20Threats%20.csv'
+cyberthreats <- read.csv(file = url)
+
+cyberthreats
+
+```
+
+3. Convert wide data format to long format by creating new columns called threat_type(new key column) and quantity (new value column) using the gather method in the tidyr package 
+
+```{r wide-to-long}
+
+cyberthreats_long <- gather(cyberthreats, threat_type, quantity, Adware:Trojan, factor_key=TRUE)
+
+cyberthreats_long
+```
+
+4. Clean up data for analysis: Change quantity column to numeric; use gsub to take care of commas and not introduce NAs when you make the conversion
+
+
+```{r date-frequency-class-change}
+
+#cyberthreats_long$quantity
+
+cyberthreats_long$quantity <- gsub(",", "", cyberthreats_long$quantity)         
+cyberthreats_long$quantity
+
+cyberthreats_long$quantity= as.numeric(as.character(cyberthreats_long$quantity))
+
+sapply(cyberthreats_long, class)
+
+cyberthreats_long$quantity
+
+```
+
+
+4a. Analysis: Compare the frequency of cyber crime each year  
+
+```{r crime-group-by-year}
+
+cyber_gpb_year = cyberthreats_long %>% group_by(Year) %>%
+                  summarise(total_crime = sum(quantity))
+
+cyber_gpb_year
+
+```
+
+4b. Another interesting analysis is to compare the frenquency of each type of cybercrime by the year 
+
+```{r crime-group-by-year-type}
+
+cyber_gpb_threat = cyberthreats_long %>% group_by(Year, threat_type)  %>%
+                   summarise(total_crime = sum(quantity))
+
+cyber_gpb_threat
+```
+
+
+*Conclusion: This was an interesting dataset to analyse. From the analysis, cybercrime was highest in 2016 with a 7406 count, followed by 2020, 2022, 2019, 2021, 2015, 2017, and 2018. From analysis 4b, it is clear that Ransomware is the highest cyber crime committed each year. Governments can better target resources to this specific cyber threat given its high incidence.*
