@@ -1,0 +1,60 @@
+---
+title: "Data 607 Project 2 Dataset 3"
+author: "Bridget Boakye"
+date: "2022-10-05"
+output: html_document
+---
+
+*Introduction: The goal of this assignment is to give you practice in preparing different datasets for downstream analysis work. In this assignment, I chose the perceptions of undocumented immigrants data I shared from YouGov. The survey conducted by the company on September 19, 2022 asked 30,552 people the question: "Overall, do you think undocumented immigrants in the U.S. are treated...? Fairly, Unfairly, Not Sure". The results of the data is presented in a wide table format. I'm especially fascinated by survey data and how best to work with them as they come up quite often in my work.*
+
+
+1. Download packages for assignment 
+
+```{r upload-packages}
+
+library(tidyr)
+library(dplyr)
+
+```
+
+2. Copied the data into excel, saved the file as CSV, uploaded to my GitHub to then read into in R Studio. 
+
+```{r upload-data}
+
+url <- 'https://raw.githubusercontent.com/breboa/MSDS-Data-607/main/Immigrant%20Perceptions%20Data.csv'
+survey_data <- read.csv(file = url)
+
+survey_data
+
+```
+
+2b. Table shows quite a lot of NAs in rile. Remove them. 
+
+```{r clean-data}
+
+survey_data <- na.omit(survey_data)
+survey_data
+
+```
+
+3. Convert wide data format to long format by creating new columns called race (new key column) and percent (new value column) using the gather method in the tidyr package 
+
+```{r wide-to-long}
+
+survey_data_long <- gather(survey_data, race, percent, All:Other, factor_key=TRUE)
+
+survey_data_long
+
+```
+
+4. Analysis: Which race ranks the highest for the different responses on this survey?
+
+```{r survey-group-by-arrange}
+
+survey_ordered = survey_data_long %>% group_by(X, race) %>% arrange(survey_data_long$X, survey_data_long$percent)
+
+survey_ordered
+
+```
+
+*Conclusion: With the exception of having to remove the rows without data, this data was mostly clean. From the analysis, it appears white respondents are most likely to say that undocumented immigrants are treated fairly, at 43% compared to the average of 37%, Black respondents are most likely to say they are not sure at 32% comparred to the average of 26%, and both Hispanic and Black respondents are most likely to say undocumented immigrants are treated unfairly at 44% compared to the average of 38%.*
