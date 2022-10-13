@@ -1,0 +1,101 @@
+---
+title: "Assignment 6"
+author: "Bridget Boakye"
+date: "2022-10-12"
+output: html_document
+---
+
+*Introduction: The goal of this assignment is to tidy and transform data from two airlines across five destinations using tidyr and dplyr.*
+
+
+1. Download packages for assignment 
+
+```{r upload-packages}
+
+library(tidyr)
+library(dplyr)
+
+```
+
+2. Upload the dataframe, filling in empty values with NAs
+
+```{r upload-data}
+
+url <- 'https://raw.githubusercontent.com/breboa/MSDS-Data-607/main/Assignment%206%20Data%20.csv'
+airline_data <- read.table(url, header=TRUE, sep=",", na.strings = c("", "NA"))
+
+airline_data
+
+```
+
+Clean the data 
+
+3. Remane rows with X and X.1 with more descriptives names 
+
+```{r change-columns-names}
+
+colnames(airline_data) [1] <- "Airline"
+colnames(airline_data) [2] <- "Arrival_Status"
+
+airline_data
+
+```
+
+4. Remove blank space between rows, ie. rows with only NAs 
+
+```{r remove-NAs-using-dplyr}
+
+airline_data <- airline_data[rowSums(is.na(airline_data)) != ncol(airline_data), ]
+
+airline_data
+```
+
+
+5. Convert wide data format to long format by creating new columns called threat_type(new key column) and quantity (new value column) using the gather method in the tidyr package 
+
+```{r wide-to-long}
+
+airline_data_long <- gather(airline_data, City, Num_Flights, Los.Angeles:Seattle, factor_key=TRUE)
+
+airline_data_long
+
+```
+
+6. Fill in missing airline name using dplyr and tidyr
+
+```{r missing-airline-name}
+
+airline_data_long2 <- airline_data_long %>% mutate(Airline = as.character(na_if(Airline, 'NA'))) %>%  fill(Airline, .direction = 'down')
+
+airline_data_long2
+```   
+6. Change the two variables in the Arrival_Status column so that each varibale stands on its own using the spread method of the tidyr package using Arrival Status as the key, and Num_Flights as the value
+
+```{r transform}
+
+#airline_data_transform %>% spread(airline_data_long2, Arrival_Status, Num_Flights)
+
+airline_data_transform <- airline_data_long2 %>% spread(Arrival_Status, Num_Flights)
+
+#changing name of delayed and on time columns for analysis 
+
+colnames(airline_data_transform) [3] <- "Delayed"
+colnames(airline_data_transform) [4] <- "On_Time"
+
+airline_data_transform
+
+```
+7. Analysis: Perform analysis to compare the arrival delays for the two airlines using groupby airline and looking at summary statistics 
+
+```{r analysis}
+
+airline_data_transform %>% 
+        group_by(Airline) %>% 
+        dplyr::summarise(max = max(Delayed),
+        min=min(Delayed),
+        mean=mean(Delayed),  
+        median=median(Delayed),
+        standard_deviation=sd(Delayed))
+```
+
+*Conclusion: From cleaning and analysing the data, it is clear that AM WEST performs worst than Alaska with greater mean and median delay times with greater max and min delay times as well. The standard deviation for AM WEST is also higher meaning more variability in the delay times than Alaska, together suggesting an overall poor experience for travelers.*
