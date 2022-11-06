@@ -1,0 +1,42 @@
+---
+title: "Discussion/Assignment 11"
+author: "Bridget Boakye"
+date: "2022-11-05"
+output: html_document
+---
+
+#Introduction: The task of this assignment is to analyze an existing recommender system. 
+
+The recommender system: Tiktok, a short-form video hosting platform service with approximately 31 million daily active users. 
+
+#Perform a Scenario Design analysis as described below.Consider whether it makes sense for your selected recommender system to perform scenario design twice, once for the organization (e.g. Amazon.com) and once for the organization's customers.
+
+1) Who are the platform's target users?
+
+The target users for Tiktok are primarly young people between the ages of 16-24, or Gen-Z's, most of whom are internet natives. Their interests are two fold: 1. to have relevant and personalised content on demand, and 2. to create and share content that reaches an large and engaged audience either out of passion or for money. 
+
+2) What are their goals?
+
+The goals of users are to be entertained and informed and for creators to reach the right audience. 
+
+3) How can you help the users accomplish those goals?
+
+Tiktok can help these users accomplish their goals by providing tools/data to creators that helps them easily reach an interested audience and with relevant content and through a robust recommendation algorithm that effectively matches video consumers with the right content at the right time. 
+
+#Attempt to reverse engineer what you can about the site, from the site interface and any available information that you can find on the Internet or elsewhere.
+
+Tiktok's recommendation algorithm, or #ForYou product, is designed with a number of factors and primarily uses a content based recommender that seems to rely on reinforcement learning. The factors considered includes:
+
+  1) likes and dislikes expressed by a new user at set-up 
+  2) user interactions from videos liked/shared, accounts followed, comments         posted, and content created 
+  3) information  such as captions, sounds, and hashtags in videos watched or        created
+  4) language preference, country setting, and device type to optimise for  
+     performance 
+
+These factors are then processed and weighted based on their value to the user, and videos are ranked according to these weighted values. 
+
+#Include specific recommendations about how to improve the site's recommendation capabilities going forward. 
+
+Tiktok's algorithm is generally considered top tier. At best, the recommender system is the reason for the exponential growth in its active users over the last few years. But at worst, it's been blamed for misinformation and being terribly addictive. 
+
+In this sense, the platform can probably improve its recommendation algorithm to be more safe by limiting the virality of certain content by adding flag prompts that help users better determine what to share, a feature that has been introduced by Twitter. 
