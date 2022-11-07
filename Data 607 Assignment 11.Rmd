@@ -1,0 +1,380 @@
+---
+title: "Assignment 11"
+author: "Bridget Boakye"
+date: "2022-11-06"
+output: html_document
+---
+
+#Introduction: In Text Mining with R, Chapter 2 looks at ‘Sentiment Analysis’. In this assignment, you should start by getting the primary example code from chapter 2 working in an R Markdown document. You should provide a citation to this base code. You’re then asked to extend the code in two ways: 1) Work with a different corpus of your choosing, and 2) Incorporate at least one additional sentiment lexicon (possibly from another R package that you’ve found through research).
+
+The base code used here is taken from:
+"Text Mining with R: A Tidy Approach" by Julia Silge and David Robinson  licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 3.0 United States License.
+
+
+##Get the primary example code from chapter 2 working in R
+#1. Install libraries 
+
+```{r load-libraries}
+
+#install.packages("tidytext")
+#install.packages("textdata")
+#install.packages("wordcloud")
+
+
+library(tidytext)
+library(textdata)
+library(janeaustenr)
+library(dplyr)
+library(stringr)
+
+```
+
+#2. Sentiment analysis of Jane Austen books 
+
+```{r load-Austen-books}
+
+tidy_books <- austen_books() %>%
+  group_by(book) %>%
+  mutate(
+    linenumber = row_number(),
+    chapter = cumsum(str_detect(text, 
+                                regex("^chapter [\\divxlc]", 
+                                      ignore_case = TRUE)))) %>%
+  ungroup() %>%
+  unnest_tokens(word, text)
+
+tidy_books
+```
+
+#3. Sentiment analysis of positive words using NRC dictionary 
+
+```{r pos-sentiment-analysis-Emma-nrc}
+
+nrc_joy <- get_sentiments("nrc") %>% 
+  filter(sentiment == "joy")
+
+tidy_books %>%
+  filter(book == "Emma") %>%
+  inner_join(nrc_joy) %>%
+  count(word, sort = TRUE)
+
+```
+
+
+#4. Sentiment analysis of positive and negative using Bing dictionary 
+
+```{r pos-neg-sentiment-analysis-jane-austen-nrc}
+
+library(tidyr)
+
+jane_austen_sentiment <- tidy_books %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(book, index = linenumber %/% 80, sentiment) %>%
+  pivot_wider(names_from = sentiment, values_from = n, values_fill = 0) %>% 
+  mutate(sentiment = positive - negative)
+
+jane_austen_sentiment
+```
+
+#5. Plot of negative and positive words 
+
+```{r pos-neg-sentiment-ggplot-jane-austen-nrc}
+
+library(ggplot2)
+
+ggplot(jane_austen_sentiment, aes(index, sentiment, fill = book)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~book, ncol = 2, scales = "free_x")
+
+```
+
+#6. Filter for Pride and Prejudice 
+
+```{r filter-pride-prejudice}
+
+pride_prejudice <- tidy_books %>% 
+  filter(book == "Pride & Prejudice")
+
+pride_prejudice
+
+```
+
+#7. Comparing sentiment analysis of Pride and Prejudice by the 3 libraries, AFINN, BING, and NRC
+
+```{r comparing-3-sentiment-dictionaries}
+
+afinn <- pride_prejudice %>% 
+  inner_join(get_sentiments("afinn")) %>% 
+  group_by(index = linenumber %/% 80) %>% 
+  summarise(sentiment = sum(value)) %>% 
+  mutate(method = "AFINN")
+
+bing_and_nrc <- bind_rows(
+  pride_prejudice %>% 
+    inner_join(get_sentiments("bing")) %>%
+    mutate(method = "Bing et al."),
+  pride_prejudice %>% 
+    inner_join(get_sentiments("nrc") %>% 
+                 filter(sentiment %in% c("positive", 
+                                         "negative"))
+    ) %>%
+    mutate(method = "NRC")) %>%
+  count(method, index = linenumber %/% 80, sentiment) %>%
+  pivot_wider(names_from = sentiment,
+              values_from = n,
+              values_fill = 0) %>% 
+  mutate(sentiment = positive - negative)
+
+```
+
+#8. Plot of the 3 sentiment dictionaries 
+
+```{r ggplot-3-sentiment-dictionaries}
+
+bind_rows(afinn, 
+          bing_and_nrc) %>%
+  ggplot(aes(index, sentiment, fill = method)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~method, ncol = 1, scales = "free_y")
+
+```
+
+#9. Most common negative and positive words 
+
+```{r count-neg-positive-words}
+
+bing_word_counts <- tidy_books %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  ungroup()
+
+```
+
+#10. Plot of most common negative postive and negative words 
+
+```{r ggplot-neg-positive-words}
+
+bing_word_counts %>%
+  group_by(sentiment) %>%
+  slice_max(n, n = 10) %>% 
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(x = "Contribution to sentiment",
+       y = NULL)
+```
+
+#11. Word Cloud
+
+```{r wordcloud}
+
+library(wordcloud)
+
+tidy_books %>%
+  anti_join(stop_words) %>%
+  count(word) %>%
+  with(wordcloud(word, n, max.words = 100))
+
+```
+
+```{r wordcloud-neg-pos}
+
+library(reshape2)
+
+tidy_books %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  acast(word ~ sentiment, value.var = "n", fill = 0) %>%
+  comparison.cloud(colors = c("gray20", "gray80"),
+                   max.words = 100)
+```
+
+------------------------------------------------------------------------------
+
+##Extension: sentiment analysis of the "friends" package. The friends package provides a complete script transcription of the Friends sitcom. The data originates from the Character Mining repository which includes references to scientific explorations using this data. This package simply provides the data in tibble format instead of json files. Source: https://github.com/EmilHvitfeldt/R-text-data
+
+#1. Load and inspect friends corpus  
+
+
+```{r glimpse-speeches}
+
+#install.packages("friends")
+library(friends)
+
+glimpse(friends)
+
+```
+
+```{r tidy-friends}
+
+
+tidy_friends <- friends %>%
+  group_by(speaker) %>%
+  mutate(
+    linenumber = row_number(),
+    chapter = cumsum(str_detect(text, 
+                                regex("^chapter [\\divxlc]", 
+                                      ignore_case = TRUE)))) %>%
+  ungroup() %>%
+  unnest_tokens(word, text)
+
+tidy_friends
+
+```
+
+#3. Sentiment analysis of positive words by Monica Geller using NRC dictionary 
+
+```{r pos-sentiment-analysis-Monica-Geller-nrc}
+
+nrc_joy <- get_sentiments("nrc") %>% 
+  filter(sentiment == "joy")
+
+tidy_friends %>%
+  filter(speaker == "Monica Geller") %>%
+  inner_join(nrc_joy) %>%
+  count(word, sort = TRUE)
+
+```
+
+#4. Sentiment analysis of positive and negative using Bing dictionary 
+
+```{r pos-neg-sentiment-analysis-friends-nrc}
+
+library(tidyr)
+
+friends_sentiment <- tidy_friends %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(speaker, index = linenumber %/% 80, sentiment) %>%
+  pivot_wider(names_from = sentiment, values_from = n, values_fill = 0) %>% 
+  mutate(sentiment = positive - negative)
+
+```
+
+#5. Filter for Pride and Prejudice 
+
+```{r filter-joey-tribbiani}
+
+joey_tribbiani <- tidy_friends %>% 
+  filter(speaker == "Joey Tribbiani")
+
+joey_tribbiani
+
+```
+
+#6. Comparing sentiment analysis of Pride and Prejudice by the 3 libraries, AFINN, BING, and NRC
+
+```{r comparing-3-sentiment-dictionaries-joey}
+
+afinn <- joey_tribbiani %>% 
+  inner_join(get_sentiments("afinn")) %>% 
+  group_by(index = linenumber %/% 80) %>% 
+  summarise(sentiment = sum(value)) %>% 
+  mutate(method = "AFINN")
+
+bing_and_nrc <- bind_rows(
+  joey_tribbiani %>% 
+    inner_join(get_sentiments("bing")) %>%
+    mutate(method = "Bing et al."),
+  pride_prejudice %>% 
+    inner_join(get_sentiments("nrc") %>% 
+                 filter(sentiment %in% c("positive", 
+                                         "negative"))
+    ) %>%
+    mutate(method = "NRC")) %>%
+  count(method, index = linenumber %/% 80, sentiment) %>%
+  pivot_wider(names_from = sentiment,
+              values_from = n,
+              values_fill = 0) %>% 
+  mutate(sentiment = positive - negative)
+
+```
+
+#7. Plot of the 3 sentiment dictionaries 
+
+According to the 3 sentiment dictionaries, Joey Tribbiani uses mostly positive words to varying degrees. This reflects the good-natured character in the series. Afinn and NRC identify one instances of negative words while Bing identifies none. 
+
+```{r ggplot-3-sentiment-dictionaries-friends}
+
+bind_rows(afinn, 
+          bing_and_nrc) %>%
+  ggplot(aes(index, sentiment, fill = method)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~method, ncol = 1, scales = "free_y")
+
+```
+
+#8. Most common negative and positive words 
+
+```{r count-neg-positive-words-friends}
+
+bing_word_counts <- tidy_friends %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  ungroup()
+
+```
+
+#9. Plot of most common negative postive and negative words 
+
+```{r ggplot-neg-positive-words-friends}
+
+bing_word_counts %>%
+  group_by(sentiment) %>%
+  slice_max(n, n = 10) %>% 
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(x = "Contribution to sentiment",
+       y = NULL)
+```
+
+#10. Word Cloud
+
+```{r wordcloud-friends}
+
+library(wordcloud)
+
+tidy_friends %>%
+  anti_join(stop_words) %>%
+  count(word) %>%
+  with(wordcloud(word, n, max.words = 100))
+
+```
+
+```{r wordcloud-neg-pos-friends}
+
+library(reshape2)
+
+tidy_books %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  acast(word ~ sentiment, value.var = "n", fill = 0) %>%
+  comparison.cloud(colors = c("gray20", "gray80"),
+                   max.words = 100)
+```
+
+
+#11. Incorporate at least one additional sentiment lexicon (possibly from another R package that you’ve found through research): Syuzhet lexicon 
+
+```{r sentiment-using-syuzhet}
+
+#install.packages("syuzhet")
+library(syuzhet)
+syuzhet <- get_sentiment_dictionary("syuzhet") 
+
+```
+
+
+```{r sentiment-friends-syuzhet}
+
+joey_syuzhet <- tidy_friends %>%  
+  filter(speaker == "Joey Tribbiani") %>%
+  inner_join(syuzhet, by = "word") 
+joey_syuzhet
+
+```
+#Conclusion: 4 sentiment lexicons were used in this assigment to analyze the Friends corpus. The analysis of Joey Tribbiani's character in the show reveals most of the words used were positive, a reflection of the feel good nature of the show.  
