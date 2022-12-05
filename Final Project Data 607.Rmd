@@ -1,0 +1,317 @@
+---
+title: "Final Project Data 607"
+author: "Bridget Boakye"
+date: "2022-12-05"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+###Introduction
+
+There has a great deal of economic uncertainty around the world in 2022. Many countries around the world find themselves in a recession or fearing that they will enter one. And while external shocks (supply chain shocks from the Covid-19 ppandemic, Ukraine-Russia war) have affected many countries around the world, many citizens believe that their country's leaders, and specifically government corruption through the misappropriation of funds are to blame for their country's dismal economic performance (see Sri Lanka, Ghana, Egypt, Ecuador, Nigeria, among others). 
+
+This research asks: is there a correlation between government integrity and government spending as measured by the 2022 Index of Economic Freedom, 2021 Corruption Perception Index, and 2021 World Bank (country's GDP per capita) ?
+
+###About the Data
+
+2022 Index of Economic Freedom by the Heritage Foundation (EFI_data): this annual data is complied using a range of variables to ultimately assess a country's level of economic freedom. The variables of interest in this project is not the economic freedom score or rank but rather government spending and government integrity scores and the region. See data and more details here: http://redirect.heritage.org/index/explore 
+
+2021 Corruption Perception Index by Transparency internation(CPI_data): this annual data is compiled using a range of data to assess a country's corruption perception index. The variable of interest is the corruption perception rank as to benchmark or compare to the government integrity score of the EFI data. 
+
+2021 World Bank (WB_data): The WB collects a tremendous amount of data which can be accessed through its API. The variable of interest for this project in GDP per capita. While the EFI data has GPD per capita, its values are slightly differently from the WB's and the WB's economic data provides another lens and data source fo rthis project, hence its inclusion. 
+
+
+###Data Preparation
+
+1. Load packages
+
+```{r setup, echo=TRUE, results='hide', warning=FALSE, message=FALSE}
+# load pacakges
+
+#install.packages("wbstats")
+#install.packages("ggrepel")
+#install.packages("rvest")
+library(rvest)
+library(tidyverse)
+library(wbstats)  # one of the libraries that connects with the World Bank API
+library(ggrepel)
+
+```
+
+2. Load & clean Economic Freedom Index (EFI) data
+
+2a. Load CSV of EFI from Github
+
+```{r load-EF-data}
+
+EFI_data <- read.csv("https://raw.githubusercontent.com/breboa/MSDS606/main/index2022_data.csv", header = TRUE, stringsAsFactors = FALSE)
+
+head(EFI_data)
+
+```
+
+2b. Clean EFI data: select variables of interest
+
+```{r EF-variables-of-interest}
+
+EFI_data <- EFI_data[ , c("Country.Name", "Gov.t.Spending", "Government.Integrity", "Region")]   
+
+EFI_data
+
+```
+
+2c. Clean EFI data: convert variables to approriate type
+
+```{r convert-columns-to-numeric}
+
+#Use gsub remove $ and commas in GDP per capita column and not introduce NAs when converted to numeric
+
+#EF_data$GDP.per.Capita..PPP.
+
+#EFI_data$GDP.per.Capita..PPP. <- gsub("[\\$,]" , "", #EFI_data$GDP.per.Capita..PPP.)  
+
+#EF_data$GDP.per.Capita..PPP.
+
+#change columns to numeric for analysis
+
+EFI_data <- EFI_data %>% mutate_at(c("Gov.t.Spending", "Government.Integrity"), as.numeric)
+
+EFI_data
+
+```
+
+2d. Clean EF data: create new columns Government Integrity Rank for comparisonw with other variables in EDA 
+
+```{r create-GIRank-column}
+
+EFI_data1 <- arrange(EFI_data, desc(Government.Integrity)) %>%
+        mutate(GovtInt_Rank = 1:nrow(EFI_data))
+
+#NAs evident in government integrity; for now, don't remove as will treat separately in EDA and analysis 
+
+EFI_data1
+
+```
+
+3. Load & clean Corruption Perception Index (EFI) data
+
+3a. Attempted to scrape the corruption perception index from Transparency.org using rvest and SelectorGadget but the table is dynamic and selector can't capture the data in the table. With more time, I'd use RSelenium to retrieve this data.
+
+
+```{r scape-CI-data}
+
+#link = "https://www.transparency.org/en/cpi/2021/"
+#page = read_html(link)
+
+#ci_country = page %>% html_nodes(".pr-2") %>% html_text()
+#ci_score = page %>% html_nodes(".mr-4") %>% html_text()
+#ci_rank = page %>% html_nodes("div:nth-child(4) p , .w-16") %>% html_text()
+
+#put variables in dataframe
+#corruption_data = data.frame(Country, Score, Rank, stringAsFactors = FALSE)
+#corruption_data
+
+```
+
+3b. Load CSV provided on website via Github
+  
+```{r load-CPI-data}
+
+#load data from cvs skipping over first 2 rows with nonheader values
+
+CPI_data <- read.csv("https://raw.githubusercontent.com/breboa/MSDS-Data-607/main/CPI2021.csv", skip = 2 , stringsAsFactors = FALSE)
+
+head(CPI_data)
+
+```
+
+3c. Select varibales of interest in CPI data
+
+```{r clean-CPI-data}
+
+#select variables of interest for comparison
+
+CPI_data <- CPI_data[ , c("Country...Territory", "Rank")]   
+
+CPI_data
+
+```
+
+4. Load and clean World Bank (WB) data 
+
+4a. Load WB data using its API and specifically, GDP per capita for all countries in 2021
+
+```{r load-WB-data}
+
+#search for indicator
+#wb_search(pattern = "GDP per capita")
+
+indicators = ("GDP per capita" = "NY.GDP.PCAP.CD")
+
+WB_data <- wb_data(indicators, country = "all", start_date = 2021, return_wide = FALSE)
+
+WB_data
+
+```
+
+4b.Clean WB data: remove unwanted data
+
+```{r clean-WB-tables}
+
+#add id column to be able to remove unwanted rows
+
+WB_data <- WB_data %>% mutate(id = row_number())
+WB_data
+
+#remove rows
+WB_data <- WB_data[-c(1:49), ]
+WB_data
+
+#select relevant columns 
+WB_data <- WB_data[,c("country", "value")]
+WB_data
+
+```
+
+###Description of Data/Exploratory Data Analysis
+
+5. Join the 3 dataframes together
+
+```{r join-EFI-CPI-data}
+
+#First join the EFI_data and CPI data 
+
+EFI_CPI <- merge(EFI_data1, CPI_data, by.x = "Country.Name", by.y = "Country...Territory")
+
+#EFI_CPI 
+
+#Join the EF_CPI data with the WB_data
+
+finaldf <- merge(EFI_CPI, WB_data, by.x = "Country.Name", by.y ="country")
+
+finaldf
+```
+6. Explore the nature of the Government Integrity variable 
+
+6a. Explore relationship between countries' government integrity rank to perception of corruption rank from the two different datasets: the figure below shows a strong correlation between the two variables. For the sake of simplicity of this project, we will conclude that government integrity is almost the same as the (perceived) level of corruption in the country. 
+
+```{r graph-govt-int-corruption-ranks}
+
+ggplot(finaldf, aes(x = GovtInt_Rank, y = Rank)) +
+geom_point() +
+   geom_smooth(method='lm') +
+   labs(
+    title = "Rank of Government Integrity vs Rank of Perception of Corruption",
+    x = "Rank of Government Integrity",
+    y = "Rank of Perception of Corruption"
+    )
+
+```
+6b. Explore government integrity further given it's as strong an indicator of government corruption. Explore the government corruption by continent: grouping by region and finding the median, given possible skew, Sub-Saharan Africa has the lowest government integrity score, followed by Asia-Pacific, Americas, Middle East and North America, the finally, Europe at the top, meaning its governments have the highest levels of integrity. 
+
+```{r summarise}
+
+GovtInt_Region <- finaldf %>% group_by(Region) %>% summarise(govtint = median(Government.Integrity, na.rm = TRUE))
+
+GovtInt_Region
+
+```
+
+6c. Exploring government integrity by continent further (boxplot): the boxplot below shows the same rank as that in 6b with more indication about the skew and outliers in the data by region. For exmaple, the right/positive skew of the boxes of Sub-Saharan Africa and the Americas suggests most countries score low on government integrity with a few outlier countries scoring higher. Other interesting observation is the length of the box of Europe which suggests there is more dispersion in government integrity for countries across Europe (countries do not all score as high across the continent) while the smaller box and right side outlier countries in Asia Pacific (and Americas) means the data in the region has less spread and also there are countries there who score high in government integrity. Also, the boxplot gives great indication about where there is likely to be difference between groups (for example, difference between Sub-Saharan Africa and Middle and North Africa and Europe )
+
+```{r grouped-boxplot-Govt-Int}
+
+# grouped boxplot
+
+ggplot(finaldf, aes(x=Region, y=Government.Integrity, fill = Region)) +
+    geom_boxplot() + 
+    labs(
+    title = "Government Integrity by Continents",
+    caption = "Source: Economic Freedom Index, 2022, Heritage Foundation",
+    x = "Continent",
+    y = "Government Integrity Score"
+    ) +
+  coord_flip() +
+  theme_classic()
+
+```    
+6d. Exploring government integrity by continent further (histogram): the histogram primarily confirms the information in the boxplot - that countries in Sub-Saharan Africa score lowest on government integrity, Europe the highest, while the Americas and Middle and North Africa score somewhere in the middle with Asia Pacific generally going across the spectrum with some countries scoring very highly. 
+
+```{r histogram-govt-integrity}
+
+ggplot(finaldf, aes(x = Government.Integrity)) +
+  geom_histogram(aes(color = Region, fill = Region)) +
+  labs(
+    title = "Government Integrity by Continents",
+    caption = "Source: Economic Freedom Index, 2022, Heritage Foundation",
+    x = "Government Integrity Score",
+    y = "Count"
+    ) 
+
+```
+
+###Statistical Analysis 
+
+The EDA explored 2 main variables: government integrity and perception of corruption. The exploration of these 3 variables provided interesting insights, especially when government integrity data was dissected by continents. Now, to answer the question of the relationship between government integrity(ie.corruption) and economic performance, specifically, corruption, we will run regressions on government spendingg and GDP per capita.
+
+7a. Explore the relationship between government integrity and government spending: find the correlation between the two variables and run a regression analysis. The correlation coefficient is: -0.563211 and the plot shows some variation of the data points from the line of best fit. 
+
+```{r plot-govt-int-spending}
+
+#run pearson's correlation on the two variables
+
+x <- finaldf[,"Government.Integrity"] 
+y <- finaldf[,"Gov.t.Spending"]
+int_spend_corr <- cor(x, y, method="pearson", use = "complete.obs")
+
+int_spend_corr
+
+
+ggplot(finaldf, aes(x = Government.Integrity, y = Gov.t.Spending)) +
+geom_point() +
+    geom_smooth(method='lm') +
+    labs(
+    title = "Government Integrity vs Government Spending",
+    x = "Government Integrity Score",
+    y = "Government Spending Score"
+    ) 
+
+```
+
+     
+
+7b. Explore the relationship between government integrity and GDP per capita (GDPppp): find the correlation coefficient and run a regression analysis. The correlation coefficient is: 0.8065732 and the plot is more closely fit to the line of best fit. 
+
+```{r plot-govt-int-GPDppp}
+
+p <- finaldf[,"Government.Integrity"] 
+q <- finaldf[,"value"]
+int_gdp_corr <- cor(p, q, method="pearson", use = "complete.obs")
+
+int_gdp_corr
+
+ggplot(finaldf, aes(x = Government.Integrity, y = value)) +
+geom_point() +
+    geom_smooth(method='lm') +
+    labs(
+    title = "Government Integrity vs GDP per capita",
+    x = "Government Integrity Score",
+    y = "GDP per capita"
+    ) 
+
+     
+```
+
+###Conclusion
+
+From the two plots above, we get some useful insights to answer our intial research question: is there a correlation between government integrity and government spending as measured by the 2022 Index of Economic Freedom, 2021 Corruption Perception Index, and 2021 World Bank (country's GDP per capita) ?
+
+From Figure 7a, I see that as government integrity scores rise, government spending decreases, which would support the idea that governments who have more integrity are more fiscally discipled. However, this relationship is not strong and the correlation coefficient is only ~(-)0.56. This might be a result of all governments, irrespective of integrity, having to spend more to deal with the external shocks of the last two years (covid relief plans, cash transfers, health spending, etc).  
+
+In Figure 7b, I see that as government integrity scores rise, GPP per capita increases. This relationship is much stronger with a correlation of ~0.81. Governments with more integrity seem to maintain or weather external shocks to maintain the standard of living for their citizens. 
+
+Overall, the data suggests that is a relationship between government integrity and long term measures of a country's economic wellbeing such as stardard of living (GPD per capita) but less relationship between government integrity and government spending as government spending, though most goverments desire to maintain some discipline over their budgets, is more variable to external factors and needs of the citizens at a specific time. 
+
+With more time, I'd explore explore this correlation more deeply by looking at the relationship at the continent level as was done in the EDA to tease out nuances and outliers as well as explore the relationship between spending and integrity over time. 
+
